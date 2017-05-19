@@ -110,6 +110,19 @@ def test_multi_operations():
     # f.update(name='Chris Updated')
     f.delete()
 
+
+def test_all_cache():
+    Folder.objects.all_cache()
+    print(Folder.objects.get(name="新建文件夹_新增"))
+    print(Folder.objects.get(folder_id=10))
+    print(Folder.objects.filter(name="新建文件夹_新增").order_by('folder_id', descending=True).limit(2, 100)[:])
+    print(Folder.objects.filter(name="新建文件夹_新增")[:])
+
+
+def test_clear_cache():
+    Folder.objects.clear_cache()
+
+
 if __name__ == '__main__':
     # test_query()
     # for _ in range(20):
@@ -118,4 +131,6 @@ if __name__ == '__main__':
     #
     # for _ in range(20):
     #     test_delete()
-    test_multi_operations()
+    # test_multi_operations()
+    test_all_cache()
+    test_clear_cache()

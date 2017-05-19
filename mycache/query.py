@@ -9,6 +9,7 @@
 import logging
 
 from collections import defaultdict
+from functools import lru_cache
 
 from dataobj.manager import DataObjectsManager
 from mycache.factory import RedisCacheFactory
@@ -54,6 +55,7 @@ class DataObjectsManagerWithCache(DataObjectsManager):
 
     def __init__(self, model):
         super().__init__(model)
+        self._dont_cache = False
 
     def update(self, model_instance):
         self._invalidate_related_cache(model_instance)
@@ -67,7 +69,62 @@ class DataObjectsManagerWithCache(DataObjectsManager):
         self._invalidate_related_cache(model_instance)
         return super().dump(model_instance)
 
+    def limit(self, how_many, offset=0):
+        self._dont_cache = True
+        return super().limit(how_many, offset)
+
+    def order_by(self, *field_names, descending=False):
+        self._dont_cache = True
+        return super().order_by(*field_names, descending=descending)
+
+    def all_cache(self):
+        """
+        Complex cache conditions are not supported now in this method.
+        """
+        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+
+        with CacheManager(self._model, cache_db) as cache:
+            results = self.all()
+
+            for key in self._get_valid_single_cache_keys():
+                logger.debug('All cache with single condition key {}'.format(key))
+                data = defaultdict(list)
+
+                for item in results:
+                    data[getattr(item, key)].append(item)
+
+                for value, rows in data.items():
+                    cache.add(self._get_single_query(key, value), *rows)
+
+    def clear_cache(self):
+        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+        with CacheManager(self._model, cache_db) as cache:
+            cache.clear()
+
+    def _get_single_query(self, key, value):
+        return {'select': list(self._model.__mappings__.keys()),
+                'where': {key: value},
+                'limit': None,
+                'order_by': None,
+                'descending': False}
+
+    def _get_valid_single_cache_keys(self):
+        valid_cache_keys = []
+
+        for key in getattr(self._model.Meta, 'cache_conditions', {}):
+            if len(key.split('+')) != 1:
+                continue
+
+            if key in self._model:
+                valid_cache_keys.append(key)
+
+        return valid_cache_keys
+
     def _fetch_results(self):
+        if self._dont_cache is True:
+            super()._fetch_results()
+            return
+
         if self._query_results_cache is not None:
             return self._query_results_cache
 
@@ -77,12 +134,12 @@ class DataObjectsManagerWithCache(DataObjectsManager):
             results = cache.get(self._query_collector)
 
             if results is None:
-                logger.info('Load results from database')
+                logger.info('Load results from database for condition "{}"'.format(self._query_collector['where']))
                 # Fetch results from database and save the results to cache
                 super()._fetch_results()
                 cache.add(self._query_collector, *list(self._query_results_cache))
             else:
-                logger.info('Load results from cache')
+                logger.info('Load results from cache for condition "{}"'.format(self._query_collector['where']))
                 self._query_results_cache = results
 
     def _invalidate_related_cache(self, model_instance):
