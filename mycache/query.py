@@ -9,10 +9,9 @@
 import logging
 
 from collections import defaultdict
-from functools import lru_cache
 
 from dataobj.manager import DataObjectsManager
-from mycache.factory import RedisCacheFactory
+# from mycache.factory import RedisCacheFactory
 from mycache.utils import camel_to_underscore, get_query_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -57,6 +56,15 @@ class DataObjectsManagerWithCache(DataObjectsManager):
         super().__init__(model)
         self._dont_cache = False
 
+    @property
+    def cache_db(self):
+        factory = getattr(self._model.Meta, 'cache_db_factory', None)
+        if factory is None:
+            raise RuntimeError("Cache db factory is not defined yet")
+
+        assert callable(factory), 'Expected a callable factory, not {}'.format(factory)
+        return factory()
+
     def update(self, model_instance):
         self._invalidate_related_cache(model_instance)
         return super().update(model_instance)
@@ -81,9 +89,9 @@ class DataObjectsManagerWithCache(DataObjectsManager):
         """
         Complex cache conditions are not supported now in this method.
         """
-        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+        # cache_db = RedisCacheFactory().make_redis_cache('data_objects')
 
-        with CacheManager(self._model, cache_db) as cache:
+        with CacheManager(self._model, self.cache_db) as cache:
             results = self.all()
 
             for key in self._get_valid_single_cache_keys():
@@ -97,8 +105,8 @@ class DataObjectsManagerWithCache(DataObjectsManager):
                     cache.add(self._get_single_query(key, value), *rows)
 
     def clear_cache(self):
-        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
-        with CacheManager(self._model, cache_db) as cache:
+        # cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+        with CacheManager(self._model, self.cache_db) as cache:
             cache.clear()
 
     def _get_single_query(self, key, value):
@@ -128,9 +136,9 @@ class DataObjectsManagerWithCache(DataObjectsManager):
         if self._query_results_cache is not None:
             return self._query_results_cache
 
-        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+        # cache_db = RedisCacheFactory().make_redis_cache('data_objects')
         # Check Redis/File cache before accessing database
-        with CacheManager(self._model, cache_db) as cache:
+        with CacheManager(self._model, self.cache_db) as cache:
             results = cache.get(self._query_collector)
 
             if results is None:
@@ -145,8 +153,8 @@ class DataObjectsManagerWithCache(DataObjectsManager):
                 self._query_results_cache = results
 
     def _invalidate_related_cache(self, model_instance):
-        cache_db = RedisCacheFactory().make_redis_cache('data_objects')
-        with CacheManager(self._model, cache_db) as cache:
+        # cache_db = RedisCacheFactory().make_redis_cache('data_objects')
+        with CacheManager(self._model, self.cache_db) as cache:
             # Generate queries firstly
             queries = []
             for key in getattr(model_instance.Meta, 'cache_conditions', {}):

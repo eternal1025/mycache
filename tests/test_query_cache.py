@@ -10,6 +10,7 @@ import logging
 
 import datetime
 from db_util import mysql_query, mysql_execute
+from werkzeug.contrib.cache import RedisCache
 
 from dataobj import IntField, DatetimeField
 from dataobj import Model
@@ -43,6 +44,7 @@ class Folder(Model):
     class Meta:
         table_name = 'folder'
         dao_class = CommonDao
+        cache_db_factory = lambda: RedisCache(db=1)
         cache_conditions = {
             '*': 3600,
             'folder_id': 3600,
@@ -132,5 +134,7 @@ if __name__ == '__main__':
     # for _ in range(20):
     #     test_delete()
     # test_multi_operations()
-    test_all_cache()
-    test_clear_cache()
+    # test_all_cache()
+    # test_clear_cache()
+    x = Folder.objects.get(folder_id=10)
+    print(x)

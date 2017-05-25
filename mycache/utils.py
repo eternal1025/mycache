@@ -11,7 +11,6 @@ from string import ascii_uppercase, ascii_lowercase
 
 import hashlib
 
-
 ASCII_MAPPING = dict((k, '_{}'.format(v)) for k, v in zip(ascii_uppercase, ascii_lowercase))
 
 
@@ -43,7 +42,10 @@ def get_query_fingerprint(query, hash_method='md5'):
 
 
 if __name__ == '__main__':
-    d = {'select': ['folder_id', 'icon_url', 'name', 'create_at'], 'limit': 20, 'descending': True, 'where': {},
+    d = {'select': ['folder_id', 'icon_url', 'name', 'create_at'], 'descending': True, 'limit': 20, 'where': {},
          'order_by': ['folder_id', ]}
-
+    a = d
+    c = d
     print(get_query_fingerprint(d))
+    print(get_query_fingerprint(a))
+    print(get_query_fingerprint(c))

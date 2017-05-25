@@ -25,6 +25,7 @@
         class Meta:
             table_name = 'folder'
             dao_class = CommonDao
+            cache_db_factory = lambda _: RedisCache(db=10)
          
             # 添加需要缓存的查询条件
             cache_conditions = {
@@ -79,6 +80,9 @@
     
 
 # 更新日志
+## 2017-05-25 v0.3
+1. 本次更新主要是将缓存依赖的 Cache DB 隔离开来，由外部调用者负责提供一个 CacheDB-like 对象，方便外部控制；
+2. 
 
 ## 2017-05-23
 1. 日志输出更新，添加详细的输出信息。
