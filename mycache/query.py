@@ -143,13 +143,16 @@ class DataObjectsManagerWithCache(DataObjectsManager):
 
             if results is None:
                 logger.warning(
-                    'Load results from database table `{}` with condition "{}"'.format(self._model.__table_name__,
-                                                                                       self._query_collector))
+                    'Load results from database for model "{}" with query condition "{}"'.format(self._model.__name__,
+                                                                                                 self._query_collector[
+                                                                                                     'where']))
                 # Fetch results from database and save the results to cache
                 super()._fetch_results()
                 cache.add(self._query_collector, *list(self._query_results_cache))
             else:
-                logger.info('Load results from cache with condition "{}"'.format(self._query_collector))
+                logger.info('Load results from cache for model "{}" with condition "{}"'.format(self._model.__name__,
+                                                                                                self._query_collector[
+                                                                                                    'where']))
                 self._query_results_cache = results
 
     def _invalidate_related_cache(self, model_instance):
