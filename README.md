@@ -78,8 +78,21 @@
         return x * y + z
     ```
     
+1. 使用自定义的缓存 Key
+
+```python
+@output_cache(custom_cache_key='test_fast_cache_{x}_{y}_{z}_{f}')
+def test_fast_cache(x, y, z, *args, **kwargs):
+    time.sleep(0.1)
+    return x * y * z
+```
+
 
 # 更新日志
+## 2017-05-31 v0.4
+1. 改进缓存 Key 生成机制，取消原先生成方式，同时对 `output_cache` 提供了设置自定义缓存 Key 的功能；
+2. 新的缓存 Key 默认生成时，期望用户对象重新实现了 `__str__` 或者 `__repr__` 方法来唯一标识该对象，否则可能会产生错误的缓存 Key。 
+
 ## 2017-05-26
 1. 改善日志输出
 

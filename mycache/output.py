@@ -20,7 +20,7 @@ __version__ = '0.0.1'
 __author__ = 'Chris'
 
 
-def output_cache(timeout=60, ignore_outputs=None, cache_type='redis', **cache_options):
+def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_type='redis', **cache_options):
     """
     A cache wrapper that caches output of a function in the specified cache system.
     Note: the arguments of a function must be serializable to pickle.
@@ -40,8 +40,14 @@ def output_cache(timeout=60, ignore_outputs=None, cache_type='redis', **cache_op
     def function_bar(*args, **kwargs):
         pass
 
+    3. With custom key template:
+    @output_cache(custom_cache_key='function_spam_{x}_{y}_{args}')
+    def function_spam(x, y, *args, **kwargs):
+        pass
+
     :param timeout: int, default key timeout
     :param ignore_outputs: list, ignored outputs won't be cached
+    :param custom_cache_key: str template, define your own cache key
     :param cache_type: str, support **Redis** cache and **FileSystem** cache
     :param cache_options: dict, keyword arguments will be passed to `werkzeug.contrib.cache.RedisCache`
      or `werkzeug.contrib.cache.FileSystemCache` object.
@@ -55,15 +61,38 @@ def output_cache(timeout=60, ignore_outputs=None, cache_type='redis', **cache_op
     except:
         ignore_outputs = list()
 
+    def make_custom_cache_key(func, *args, **kwargs):
+        from collections import namedtuple
+        import inspect
+
+        # Get signatures of all the args and kwargs
+        full_args = dict()
+        spec = inspect.getfullargspec(func)
+        NamedArgs = namedtuple('NamedArgs', spec.args)
+        named_args = NamedArgs(*args[:len(spec.args)])
+        full_args.update(named_args._asdict())
+        full_args[spec.varargs] = args[len(spec.args):]
+        full_args.update(kwargs)
+
+        return custom_cache_key.format(**full_args)
+
     def make_cache_key(func, *args, **kwargs):
+        """
+        Warning: in order to generate a default unique key for each object,
+        the method `__repr__` or `__str__` must be overridden
+        to identify the object. BTW, custom cache can be defined to replace
+        the default one.
+        """
         import pickle
         import inspect
         import hashlib
 
+        if custom_cache_key:
+            return make_custom_cache_key(func, *args, **kwargs)
+
         mod = inspect.getmodule(func)
         name = '{}.{}.{}'.format(cache_type, os.path.splitext(os.path.split(mod.__file__)[-1])[0], func.__name__)
-
-        items = list(args) + list(sorted(kwargs.items()))
+        items = tuple(str(x) for x in args) + tuple(sorted((k, str(v)) for k, v in kwargs.items()))
 
         try:
             hash_key = hashlib.md5(pickle.dumps(items)).hexdigest()
@@ -92,6 +121,7 @@ def output_cache(timeout=60, ignore_outputs=None, cache_type='redis', **cache_op
             logger.warning('Output {} is in `ignored outputs`, ignore it'.format(output))
             return output
 
+        print('Cache key is: {}'.format(key))
         logger.debug('Dump output result to {} cache with key `{}`'.format(cache_type, key))
         cache_db = get_cache_db()
         cache_db.set(key, output, timeout)

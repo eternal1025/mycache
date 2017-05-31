@@ -6,8 +6,7 @@
 # Version: 0.0.1
 # Description: description of this file.
 
-from yuanshi.smartrate.objctrl.common.mycache.src import output_cache
-from yuanshi.smartrate.utils.single_context import single_module_context
+from mycache.output import output_cache
 
 
 @output_cache(timeout=100, threshold=10, cache_dir='cache_db', cache_type='file')
@@ -26,30 +25,32 @@ class CacheFoo(object):
         self._a = a
         self._b = b
 
+    def __repr__(self):
+        return '<CacheFoo a={}, b={}>'.format(self._a, self._b)
+
     @output_cache(timeout=100, threshold=10, cache_dir='cache_db', cache_type='file')
     def test_cache_wrapper(self, *args):
-        time.sleep(0.1)
+        time.sleep(1)
         return self._a * self._b + sum(args)
 
 
-@output_cache()
-def test_fast_cache(x, y, z):
+@output_cache(custom_cache_key='test_fast_cache_{x}_{y}_{z}_{f}')
+def test_fast_cache(x, y, z, *args, **kwargs):
     time.sleep(0.1)
     return x * y * z
 
 
 if __name__ == '__main__':
-    with single_module_context():
-        import time
+    import time
 
-        start = time.time()
+    start = time.time()
 
-        foo = CacheFoo(10, 20)
+    foo = CacheFoo(10, 20)
 
-        for _ in range(1000):
-            print(test_cache_wrapper(10, 20, 30))
-            print(foo.test_cache_wrapper(10, 20, 30))
-            print(test_file_cache(10, 20, 30))
-            test_fast_cache(10, 20, 30)
+    for _ in range(2):
+        # print(test_cache_wrapper(10, 20, 30))
+        # print(foo.test_cache_wrapper(10, 20, 30))
+        # print(test_file_cache(10, 20, 30))
+        test_fast_cache(10, 20, 30, 100, 200, 300, f=100)
 
-        print('耗时：{}'.format(time.time() - start))
+    print('耗时：{}'.format(time.time() - start))
