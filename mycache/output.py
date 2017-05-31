@@ -45,6 +45,10 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
     def function_spam(x, y, *args, **kwargs):
         pass
 
+    4. Refresh cache immediately:
+    Call function_spam with an extra param `refresh_cache_now=True`
+    y = function_spam(10, 20, refresh_cache_now=True)
+
     :param timeout: int, default key timeout
     :param ignore_outputs: list, ignored outputs won't be cached
     :param custom_cache_key: str template, define your own cache key
@@ -121,7 +125,6 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
             logger.warning('Output {} is in `ignored outputs`, ignore it'.format(output))
             return output
 
-        print('Cache key is: {}'.format(key))
         logger.debug('Dump output result to {} cache with key `{}`'.format(cache_type, key))
         cache_db = get_cache_db()
         cache_db.set(key, output, timeout)
@@ -131,9 +134,10 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
     def decorate_func(func):
         @wraps(func)
         def inner_wrapper(*args, **kwargs):
+            refresh_cache_now = kwargs.pop('refresh_cache_now', False)
             cache_key = make_cache_key(func, *args, **kwargs)
-            cached_obj = cache_get(cache_key)
 
+            cached_obj = cache_get(cache_key) if refresh_cache_now is False else None
             return cached_obj if cached_obj is not None else cache_set(cache_key, func(*args, **kwargs))
 
         return inner_wrapper

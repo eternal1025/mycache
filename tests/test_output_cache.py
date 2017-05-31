@@ -36,7 +36,7 @@ class CacheFoo(object):
 
 @output_cache(custom_cache_key='test_fast_cache_{x}_{y}_{z}_{f}')
 def test_fast_cache(x, y, z, *args, **kwargs):
-    time.sleep(0.1)
+    time.sleep(1)
     return x * y * z
 
 
