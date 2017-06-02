@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='mycache',
-    version='0.3',
+    version='0.4',
     packages=['tests', 'mycache'],
     url='',
     license='Apache License',
