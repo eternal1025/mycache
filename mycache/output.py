@@ -9,6 +9,10 @@
 import logging
 
 import os
+import pickle
+import inspect
+import hashlib
+from collections import ChainMap
 from functools import wraps
 from werkzeug.contrib.cache import FileSystemCache
 
@@ -65,21 +69,6 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
     except:
         ignore_outputs = list()
 
-    def make_custom_cache_key(func, *args, **kwargs):
-        from collections import namedtuple
-        import inspect
-
-        # Get signatures of all the args and kwargs
-        full_args = dict()
-        spec = inspect.getfullargspec(func)
-        NamedArgs = namedtuple('NamedArgs', spec.args)
-        named_args = NamedArgs(*args[:len(spec.args)])
-        full_args.update(named_args._asdict())
-        full_args[spec.varargs] = args[len(spec.args):]
-        full_args.update(kwargs)
-
-        return custom_cache_key.format(**full_args)
-
     def make_cache_key(func, *args, **kwargs):
         """
         Warning: in order to generate a default unique key for each object,
@@ -87,12 +76,10 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         to identify the object. BTW, custom cache can be defined to replace
         the default one.
         """
-        import pickle
-        import inspect
-        import hashlib
 
         if custom_cache_key:
-            return make_custom_cache_key(func, *args, **kwargs)
+            params = ChainMap(inspect.signature(func).parameters, kwargs)
+            return custom_cache_key.format(**params)
 
         mod = inspect.getmodule(func)
         name = '{}.{}.{}'.format(cache_type, os.path.splitext(os.path.split(mod.__file__)[-1])[0], func.__name__)
@@ -136,7 +123,6 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         def inner_wrapper(*args, **kwargs):
             refresh_cache_now = kwargs.pop('refresh_cache_now', False)
             cache_key = make_cache_key(func, *args, **kwargs)
-
             cached_obj = cache_get(cache_key) if refresh_cache_now is False else None
             return cached_obj if cached_obj is not None else cache_set(cache_key, func(*args, **kwargs))
 
