@@ -12,7 +12,7 @@ import os
 import pickle
 import inspect
 import hashlib
-from collections import ChainMap
+from collections import ChainMap, UserDict
 from functools import wraps
 from werkzeug.contrib.cache import FileSystemCache
 
@@ -22,6 +22,14 @@ logger = logging.getLogger(__name__)
 
 __version__ = '0.0.1'
 __author__ = 'Chris'
+
+
+class Params(dict):
+    def __getitem__(self, item):
+        return super().__getitem__(item)
+
+    def __missing__(self, key):
+        return "None"
 
 
 def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_type='redis', **cache_options):
@@ -78,8 +86,11 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         """
 
         if custom_cache_key:
-            params = ChainMap(inspect.signature(func).parameters, kwargs)
-            return custom_cache_key.format(**params)
+            params = Params(ChainMap(inspect.signature(func).parameters, kwargs))
+            key = custom_cache_key.format(**params)
+            # remove None field
+            key = '_'.join(f.strip() for f in key.split('_') if f.strip() != 'None')
+            return key
 
         mod = inspect.getmodule(func)
         name = '{}.{}.{}'.format(cache_type, os.path.splitext(os.path.split(mod.__file__)[-1])[0], func.__name__)
@@ -123,6 +134,7 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         def inner_wrapper(*args, **kwargs):
             refresh_cache_now = kwargs.pop('refresh_cache_now', False)
             cache_key = make_cache_key(func, *args, **kwargs)
+            print('Cache key: {}'.format(cache_key))
             cached_obj = cache_get(cache_key) if refresh_cache_now is False else None
             return cached_obj if cached_obj is not None else cache_set(cache_key, func(*args, **kwargs))
 
