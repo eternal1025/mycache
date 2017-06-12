@@ -134,7 +134,7 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         def inner_wrapper(*args, **kwargs):
             refresh_cache_now = kwargs.pop('refresh_cache_now', False)
             cache_key = make_cache_key(func, *args, **kwargs)
-            print('Cache key: {}'.format(cache_key))
+            # print('Cache key: {}'.format(cache_key))
             cached_obj = cache_get(cache_key) if refresh_cache_now is False else None
             return cached_obj if cached_obj is not None else cache_set(cache_key, func(*args, **kwargs))
 
