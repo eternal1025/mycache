@@ -11,7 +11,6 @@ import logging
 from collections import defaultdict
 
 from dataobj.manager import DataObjectsManager
-# from mycache.factory import RedisCacheFactory
 from mycache.utils import camel_to_underscore, get_query_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -65,17 +64,17 @@ class DataObjectsManagerWithCache(DataObjectsManager):
         assert callable(factory), 'Expected a callable factory, not {}'.format(factory)
         return factory()
 
-    def update(self, model_instance):
-        self._invalidate_related_cache(model_instance)
-        return super().update(model_instance)
+    def update(self, model_instance, conn=None):
+        self._invalidate_related_cache(model_instance, conn)
+        return super().update(model_instance, conn)
 
-    def delete(self, model_instance):
-        self._invalidate_related_cache(model_instance)
-        return super().delete(model_instance)
+    def delete(self, model_instance, conn=None):
+        self._invalidate_related_cache(model_instance, conn)
+        return super().delete(model_instance, conn)
 
-    def dump(self, model_instance):
-        self._invalidate_related_cache(model_instance)
-        return super().dump(model_instance)
+    def dump(self, model_instance, conn=None):
+        self._invalidate_related_cache(model_instance, conn)
+        return super().dump(model_instance, conn)
 
     def limit(self, how_many, offset=0):
         self._dont_cache = True
@@ -155,7 +154,7 @@ class DataObjectsManagerWithCache(DataObjectsManager):
                                                                                                     'where']))
                 self._query_results_cache = results
 
-    def _invalidate_related_cache(self, model_instance):
+    def _invalidate_related_cache(self, model_instance, conn=None):
         # cache_db = RedisCacheFactory().make_redis_cache('data_objects')
         with CacheManager(self._model, self.cache_db) as cache:
             # Generate queries firstly
