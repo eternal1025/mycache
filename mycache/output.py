@@ -32,7 +32,8 @@ class Params(dict):
         return "None"
 
 
-def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_type='redis', **cache_options):
+def output_cache(enable=True, timeout=60, ignore_outputs=None, custom_cache_key='', cache_type='redis',
+                 **cache_options):
     """
     A cache wrapper that caches output of a function in the specified cache system.
     Note: the arguments of a function must be serializable to pickle.
@@ -61,6 +62,7 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
     Call function_spam with an extra param `refresh_cache_now=True`
     y = function_spam(10, 20, refresh_cache_now=True)
 
+    :param enable: bool, whether enable caching system
     :param timeout: int, default key timeout
     :param ignore_outputs: list, ignored outputs won't be cached
     :param custom_cache_key: str template, define your own cache key
@@ -130,6 +132,9 @@ def output_cache(timeout=60, ignore_outputs=None, custom_cache_key='', cache_typ
         return output
 
     def decorate_func(func):
+        if not enable:
+            return func
+
         @wraps(func)
         def inner_wrapper(*args, **kwargs):
             refresh_cache_now = kwargs.pop('refresh_cache_now', False)
